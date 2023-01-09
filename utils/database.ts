@@ -1,17 +1,20 @@
 const mssql = require('mssql')
+const TIMEOUT = 30 * 1000; // 30 secs
 const sqlConfig = {
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
     server: process.env.DB_SERVER,
-    requestTimeout: 30000,
+    requestTimeout: TIMEOUT,
+    connectionTimeout: TIMEOUT,
     pool: {
         max: 10,
         min: 0,
-        idleTimeoutMillis: 30000
+        idleTimeoutMillis: 60000
     },
     options: {
-        requestTimeout: 30000,
+        requestTimeout: TIMEOUT,
+        connectionTimeout: TIMEOUT,
         encrypt: false, // for azure
         trustServerCertificate: false // change to true for local dev / self-signed certs
     }
@@ -36,6 +39,19 @@ class SqlRequestBuilder {
         this.inputs.push({paramName, typeOrValue, value})
         return this;
     }
+    public numberInput(paramName: string, value: number): SqlRequestBuilder {
+        this.inputs.push({paramName, typeOrValue: mssql.Int, value})
+        return this;
+    }
+    public stringInput(paramName: string, value: string): SqlRequestBuilder {
+        this.inputs.push({paramName, typeOrValue: mssql.NVarChar, value})
+        return this;
+    }
+    public dateTimeInput(paramName: string, value: Date): SqlRequestBuilder {
+        //@ts-ignore
+        this.inputs.push({paramName, typeOrValue: mssql.DateTime, value})
+        return this;
+    }
 
     public output(paramName: string, typeOrValue: any, value?: any): SqlRequestBuilder {
         this.outputs.push({paramName, typeOrValue, value})
@@ -56,6 +72,9 @@ class SqlRequestBuilder {
 
 declare type SqlRequest = {
     input: (paramName: string, typeOrValue: any, value?: any) => void
+    dateTimeInput: (paramName: string, value: Date) => void
+    numberInput: (paramName: string, value: number) => void
+    stringInput: (paramName: string, value: string) => void
     output: (paramName: string, typeOrValue: any, value?: any) => void
     query: (sql: string) => Promise<SqlQueryResult>
 }
